@@ -22,10 +22,8 @@ func main() {
 	_, err := toml.DecodeFile(configPath, config)
 	if err != nil {
 		log.Println("Could not find configs file. Using default values:", err)
-
 	}
 	server := api.New(config)
-	if err := server.Start(); err != nil {
-		log.Fatal(err)
-	}
+	// API server start
+	log.Fatal(server.Start())
 }

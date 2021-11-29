@@ -1,1 +1,2 @@
 bind_addr = ":9001"
+logger_level = "debug"
