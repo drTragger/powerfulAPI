@@ -9,6 +9,7 @@ require (
 )
 
 require (
+	github.com/golang-migrate/migrate v3.5.4+incompatible // indirect
 	github.com/lib/pq v1.10.4 // indirect
 	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881 // indirect
 )
