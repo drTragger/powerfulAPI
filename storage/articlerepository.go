@@ -40,20 +40,17 @@ func (ar *ArticleRepository) DeleteById(id int) (*models.Article, error) {
 }
 
 func (ar *ArticleRepository) FindArticleById(id int) (*models.Article, bool, error) {
-	articles, err := ar.SelectAll()
-	var found bool
-	if err != nil {
-		return nil, found, err
+	query := fmt.Sprintf("SELECT * FROM %s WHERE id=$1", tableArticle)
+	article := models.Article{}
+	row := ar.storage.db.QueryRow(query, id)
+	switch err := row.Scan(&article.ID, &article.Title, &article.Author, &article.Content); err {
+	case sql.ErrNoRows:
+		return nil, false, nil
+	case nil:
+		return &article, true, nil
+	default:
+		return nil, false, err
 	}
-	var articleFound *models.Article
-	for _, a := range articles {
-		if a.ID == id {
-			articleFound = a
-			found = true
-			break
-		}
-	}
-	return articleFound, found, nil
 }
 
 func (ar *ArticleRepository) SelectAll() ([]*models.Article, error) {

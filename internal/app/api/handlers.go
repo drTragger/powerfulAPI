@@ -36,14 +36,7 @@ func (api *API) GetAllArticles(writer http.ResponseWriter, _ *http.Request) {
 	initHeaders(writer)
 	articles, err := api.storage.Article().SelectAll()
 	if err != nil {
-		api.logger.Info(err)
-		msg := Message{
-			StatusCode: 501,
-			Message:    "We have some troubles to accessing articles in database. Try later",
-			IsError:    true,
-		}
-		writer.WriteHeader(501)
-		logEncode(json.NewEncoder(writer).Encode(msg))
+		reportDataBaseError(api, writer, err)
 		return
 	}
 	api.logger.Info("Get All Articles GET /articles")
@@ -57,26 +50,13 @@ func (api *API) PostArticle(writer http.ResponseWriter, request *http.Request) {
 	var article models.Article
 	err := json.NewDecoder(request.Body).Decode(&article)
 	if err != nil {
-		api.logger.Info("Invalid JSON received from client")
-		msg := Message{
-			StatusCode: 400,
-			Message:    "Provided JSON is invalid",
-			IsError:    true,
-		}
-		writer.WriteHeader(msg.StatusCode)
-		logEncode(json.NewEncoder(writer).Encode(msg))
+		reportInvalidJson(api, writer, err)
 		return
 	}
 	a, err := api.storage.Article().Create(&article)
 	if err != nil {
-		api.logger.Info("Troubles while creating new article")
-		msg := Message{
-			StatusCode: 501,
-			Message:    "We are having some troubles accessing DataBase",
-			IsError:    true,
-		}
-		writer.WriteHeader(msg.StatusCode)
-		logEncode(json.NewEncoder(writer).Encode(msg))
+		reportDataBaseError(api, writer, err)
+		return
 	}
 	writer.WriteHeader(201)
 	logEncode(json.NewEncoder(writer).Encode(a))
@@ -99,14 +79,7 @@ func (api *API) GetArticleById(writer http.ResponseWriter, request *http.Request
 	}
 	article, ok, err := api.storage.Article().FindArticleById(id)
 	if err != nil {
-		api.logger.Info("Troubles accessing articles:", err)
-		msg := Message{
-			StatusCode: 500,
-			Message:    "We are having some troubles accessing DataBase. Try again later.",
-			IsError:    true,
-		}
-		writer.WriteHeader(msg.StatusCode)
-		logEncode(json.NewEncoder(writer).Encode(msg))
+		reportDataBaseError(api, writer, err)
 		return
 	}
 	if !ok {
@@ -141,14 +114,7 @@ func (api *API) DeleteArticleById(writer http.ResponseWriter, request *http.Requ
 	}
 	_, ok, err := api.storage.Article().FindArticleById(id)
 	if err != nil {
-		api.logger.Info("Troubles accessing articles:", err)
-		msg := Message{
-			StatusCode: 500,
-			Message:    "We are having some troubles accessing DataBase. Try again later.",
-			IsError:    true,
-		}
-		writer.WriteHeader(msg.StatusCode)
-		logEncode(json.NewEncoder(writer).Encode(msg))
+		reportDataBaseError(api, writer, err)
 		return
 	}
 	if !ok {
@@ -165,14 +131,7 @@ func (api *API) DeleteArticleById(writer http.ResponseWriter, request *http.Requ
 
 	_, err = api.storage.Article().DeleteById(id)
 	if err != nil {
-		api.logger.Info("Troubles deleting article:", err)
-		msg := Message{
-			StatusCode: 500,
-			Message:    "We are having some troubles accessing DataBase. Try again later.",
-			IsError:    true,
-		}
-		writer.WriteHeader(msg.StatusCode)
-		logEncode(json.NewEncoder(writer).Encode(msg))
+		reportDataBaseError(api, writer, err)
 		return
 	}
 	msg := Message{
@@ -190,26 +149,12 @@ func (api *API) PostUserRegister(writer http.ResponseWriter, request *http.Reque
 	var user models.User
 	err := json.NewDecoder(request.Body).Decode(&user)
 	if err != nil {
-		api.logger.Info("Invalid JSON received from client")
-		msg := Message{
-			StatusCode: 400,
-			Message:    "Provided JSON is invalid",
-			IsError:    true,
-		}
-		writer.WriteHeader(msg.StatusCode)
-		logEncode(json.NewEncoder(writer).Encode(msg))
+		reportInvalidJson(api, writer, err)
 		return
 	}
 	_, ok, err := api.storage.User().FindByLogin(user.Login)
 	if err != nil {
-		api.logger.Info("Troubles accessing users:", err)
-		msg := Message{
-			StatusCode: 500,
-			Message:    "We are having some troubles accessing DataBase. Try again later.",
-			IsError:    true,
-		}
-		writer.WriteHeader(msg.StatusCode)
-		logEncode(json.NewEncoder(writer).Encode(msg))
+		reportDataBaseError(api, writer, err)
 		return
 	}
 	if ok {
@@ -225,14 +170,7 @@ func (api *API) PostUserRegister(writer http.ResponseWriter, request *http.Reque
 	}
 	newUser, err := api.storage.User().Create(&user)
 	if err != nil {
-		api.logger.Info("Troubles accessing users:", err)
-		msg := Message{
-			StatusCode: 500,
-			Message:    "We are having some troubles accessing DataBase. Try again later.",
-			IsError:    true,
-		}
-		writer.WriteHeader(msg.StatusCode)
-		logEncode(json.NewEncoder(writer).Encode(msg))
+		reportDataBaseError(api, writer, err)
 		return
 	}
 	msg := Message{
@@ -249,26 +187,12 @@ func (api *API) PostToAuth(writer http.ResponseWriter, request *http.Request) {
 	var userFromJson models.User
 	err := json.NewDecoder(request.Body).Decode(&userFromJson)
 	if err != nil {
-		api.logger.Info("Invalid JSON received from client")
-		msg := Message{
-			StatusCode: 400,
-			Message:    "Provided JSON is invalid",
-			IsError:    true,
-		}
-		writer.WriteHeader(msg.StatusCode)
-		logEncode(json.NewEncoder(writer).Encode(msg))
+		reportInvalidJson(api, writer, err)
 		return
 	}
 	userFound, ok, err := api.storage.User().FindByLogin(userFromJson.Login)
 	if err != nil {
-		api.logger.Info("Troubles accessing users:", err)
-		msg := Message{
-			StatusCode: 500,
-			Message:    "We are having some troubles accessing DataBase. Try again later.",
-			IsError:    true,
-		}
-		writer.WriteHeader(msg.StatusCode)
-		logEncode(json.NewEncoder(writer).Encode(msg))
+		reportDataBaseError(api, writer, err)
 		return
 	}
 	if !ok {
@@ -314,6 +238,29 @@ func (api *API) PostToAuth(writer http.ResponseWriter, request *http.Request) {
 		StatusCode: 200,
 		Message:    tokenString,
 		IsError:    false,
+	}
+	writer.WriteHeader(msg.StatusCode)
+	logEncode(json.NewEncoder(writer).Encode(msg))
+}
+
+func reportInvalidJson(api *API, writer http.ResponseWriter, err error) {
+	api.logger.Info("Invalid JSON received from client:", err)
+	msg := Message{
+		StatusCode: 400,
+		Message:    "Provided JSON is invalid.",
+		IsError:    true,
+	}
+	writer.WriteHeader(msg.StatusCode)
+	logEncode(json.NewEncoder(writer).Encode(msg))
+	return
+}
+
+func reportDataBaseError(api *API, writer http.ResponseWriter, err error) {
+	api.logger.Info("Troubles accessing DataBase:", err)
+	msg := Message{
+		StatusCode: 500,
+		Message:    "We are having some troubles accessing DataBase. Try again later.",
+		IsError:    true,
 	}
 	writer.WriteHeader(msg.StatusCode)
 	logEncode(json.NewEncoder(writer).Encode(msg))

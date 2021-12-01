@@ -26,20 +26,17 @@ func (ur *UserRepository) Create(u *models.User) (*models.User, error) {
 }
 
 func (ur *UserRepository) FindByLogin(login string) (*models.User, bool, error) {
-	users, err := ur.SelectAll()
-	var found bool
-	if err != nil {
-		return nil, found, err
+	query := fmt.Sprintf("SELECT * FROM %s WHERE login=$1", tableUser)
+	user := models.User{}
+	row := ur.storage.db.QueryRow(query, login)
+	switch err := row.Scan(&user.ID, &user.Login, &user.Password); err {
+	case sql.ErrNoRows:
+		return nil, false, nil
+	case nil:
+		return &user, true, nil
+	default:
+		return nil, false, err
 	}
-	var userFound *models.User
-	for _, u := range users {
-		if u.Login == login {
-			userFound = u
-			found = true
-			break
-		}
-	}
-	return userFound, found, nil
 }
 
 func (ur *UserRepository) SelectAll() ([]*models.User, error) {
