@@ -3,8 +3,10 @@ package api
 import (
 	"github.com/drTragger/powerfulAPI/storage"
 	"github.com/sirupsen/logrus"
-	"log"
-	"net/http"
+)
+
+var (
+	prefix = "/api/v1"
 )
 
 func (api *API) configureLoggerField() error {
@@ -17,9 +19,11 @@ func (api *API) configureLoggerField() error {
 }
 
 func (api *API) configureRouterField() {
-	api.router.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-		Logger(writer.Write([]byte("Hello! This is REST API!")))
-	})
+	api.router.HandleFunc(prefix+"/articles", api.GetAllArticles).Methods("GET")
+	api.router.HandleFunc(prefix+"/articles/{id}", api.GetArticleById).Methods("GET")
+	api.router.HandleFunc(prefix+"/articles/{id}", api.DeleteArticleById).Methods("DELETE")
+	api.router.HandleFunc(prefix+"/articles", api.PostArticle).Methods("POST")
+	api.router.HandleFunc(prefix+"/users/register", api.PostUserRegister).Methods("POST")
 }
 
 func (api *API) configureStorageField() error {
@@ -29,10 +33,4 @@ func (api *API) configureStorageField() error {
 	}
 	api.storage = newStorage
 	return nil
-}
-
-func Logger(_ int, err error) {
-	if err != nil {
-		log.Printf("Write failed: %v", err)
-	}
 }
