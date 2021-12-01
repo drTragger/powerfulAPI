@@ -3,12 +3,17 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/drTragger/powerfulAPI/internal/app/middleware"
 	"github.com/drTragger/powerfulAPI/internal/app/models"
+	"github.com/form3tech-oss/jwt-go"
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 )
+
+const TOKEN_EXPIRATION = time.Hour * 2
 
 // Message Helping struct to create messages
 type Message struct {
@@ -233,6 +238,82 @@ func (api *API) PostUserRegister(writer http.ResponseWriter, request *http.Reque
 	msg := Message{
 		StatusCode: 201,
 		Message:    fmt.Sprintf("User %s has been successfully registered", newUser.Login),
+	}
+	writer.WriteHeader(msg.StatusCode)
+	logEncode(json.NewEncoder(writer).Encode(msg))
+}
+
+func (api *API) PostToAuth(writer http.ResponseWriter, request *http.Request) {
+	initHeaders(writer)
+	api.logger.Info("Post to Auth POST /api/v1/users/auth")
+	var userFromJson models.User
+	err := json.NewDecoder(request.Body).Decode(&userFromJson)
+	if err != nil {
+		api.logger.Info("Invalid JSON received from client")
+		msg := Message{
+			StatusCode: 400,
+			Message:    "Provided JSON is invalid",
+			IsError:    true,
+		}
+		writer.WriteHeader(msg.StatusCode)
+		logEncode(json.NewEncoder(writer).Encode(msg))
+		return
+	}
+	userFound, ok, err := api.storage.User().FindByLogin(userFromJson.Login)
+	if err != nil {
+		api.logger.Info("Troubles accessing users:", err)
+		msg := Message{
+			StatusCode: 500,
+			Message:    "We are having some troubles accessing DataBase. Try again later.",
+			IsError:    true,
+		}
+		writer.WriteHeader(msg.StatusCode)
+		logEncode(json.NewEncoder(writer).Encode(msg))
+		return
+	}
+	if !ok {
+		api.logger.Info(fmt.Sprintf("User with login \"%s\" does not exist", userFromJson.Login))
+		msg := Message{
+			StatusCode: 404,
+			Message:    fmt.Sprintf("User %s does not exist", userFromJson.Login),
+			IsError:    true,
+		}
+		writer.WriteHeader(msg.StatusCode)
+		logEncode(json.NewEncoder(writer).Encode(msg))
+		return
+	}
+	if userFound.Password != userFromJson.Password {
+		api.logger.Info("Invalid credentials to auth")
+		msg := Message{
+			StatusCode: 400,
+			Message:    "Wrong password",
+			IsError:    true,
+		}
+		writer.WriteHeader(msg.StatusCode)
+		logEncode(json.NewEncoder(writer).Encode(msg))
+		return
+	}
+
+	token := jwt.New(jwt.SigningMethodHS256)
+	claims := token.Claims.(jwt.MapClaims)
+	claims["exp"] = time.Now().Add(TOKEN_EXPIRATION).Unix()
+	tokenString, err := token.SignedString(middleware.SecretKey)
+	if err != nil {
+		api.logger.Info("Could not claim JWT token")
+		msg := Message{
+			StatusCode: 500,
+			Message:    "We are having some troubles. Try again",
+			IsError:    true,
+		}
+		writer.WriteHeader(msg.StatusCode)
+		logEncode(json.NewEncoder(writer).Encode(msg))
+		return
+	}
+
+	msg := Message{
+		StatusCode: 200,
+		Message:    tokenString,
+		IsError:    false,
 	}
 	writer.WriteHeader(msg.StatusCode)
 	logEncode(json.NewEncoder(writer).Encode(msg))

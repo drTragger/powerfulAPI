@@ -1,8 +1,10 @@
 package api
 
 import (
+	"github.com/drTragger/powerfulAPI/internal/app/middleware"
 	"github.com/drTragger/powerfulAPI/storage"
 	"github.com/sirupsen/logrus"
+	"net/http"
 )
 
 var (
@@ -20,10 +22,13 @@ func (api *API) configureLoggerField() error {
 
 func (api *API) configureRouterField() {
 	api.router.HandleFunc(prefix+"/articles", api.GetAllArticles).Methods("GET")
-	api.router.HandleFunc(prefix+"/articles/{id}", api.GetArticleById).Methods("GET")
+	api.router.Handle(prefix+"/articles/{id}", middleware.JwtMiddleware.Handler(
+		http.HandlerFunc(api.GetArticleById),
+	)).Methods("GET")
 	api.router.HandleFunc(prefix+"/articles/{id}", api.DeleteArticleById).Methods("DELETE")
 	api.router.HandleFunc(prefix+"/articles", api.PostArticle).Methods("POST")
 	api.router.HandleFunc(prefix+"/users/register", api.PostUserRegister).Methods("POST")
+	api.router.HandleFunc(prefix+"/users/auth", api.PostToAuth).Methods("POST")
 }
 
 func (api *API) configureStorageField() error {
