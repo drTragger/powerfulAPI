@@ -11,4 +11,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 )
 
-require golang.org/x/sys v0.0.0-20211124211545-fe61309f8881 // indirect
+require (
+	github.com/go-sql-driver/mysql v1.6.0 // indirect
+	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881 // indirect
+)
